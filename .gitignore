@@ -6,6 +6,7 @@
 *.lo
 *.o
 *.obj
+obj/*
 
 # Precompiled Headers
 *.gch
@@ -30,3 +31,18 @@
 *.exe
 *.out
 *.app
+bin/*
+
+# CodeBlocks
+*.cbp
+*.depend
+*.layout
+
+# Ts files
+*.ts
+
+# FFmpeg binaries
+ffmpeg/*
+
+# Hex Dump files
+*.txt
