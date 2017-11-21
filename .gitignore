@@ -45,4 +45,4 @@ bin/*
 ffmpeg/*
 
 # Hex Dump files
-*.txt
+dump.txt
