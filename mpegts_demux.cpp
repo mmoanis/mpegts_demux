@@ -17,7 +17,7 @@ using namespace std;
 ///////////////////////////////////////////////////////////////////////////////
 static void print_banner(ostream& out)
 {
-    out << "mpegts_demux V0.1" << endl;
+    out << "mpegts_demux v1.0" << endl;
 }
 static void print_usage(ostream& out)
 {

@@ -10,7 +10,7 @@ MpegTsBitStream::MpegTsBitStream(const char * filename) : m_file(NULL), m_eof(fa
 
     m_file = fopen(filename, "rb");
     if (!m_file) {
-        cerr << "MPEG-TS: can't open file \'" << filename << "\'" << endl;
+        cerr << "[ERROR]: can't open file \'" << filename << "\'" << endl;
     } else {
         m_bad = false;
     }
@@ -38,7 +38,7 @@ bool MpegTsBitStream::GetPacket(Packet& packet)
 
     uint8_t c = static_cast<uint8_t> (C);
     if (c != MPEGTS_SYNC_BYTE) {
-        cerr << "GetPacket: Sync byte not found." << endl;
+        cerr << "[ERROR]: Sync byte not found." << endl;
         m_bad = true;
         return false;
     }
@@ -56,7 +56,7 @@ bool MpegTsBitStream::GetPacket(Packet& packet)
     }
 
     if (count != PACKET_SIZE) {
-        cerr << "GetPacket: Expected " << PACKET_SIZE << " Got " << count << endl;
+        cerr << "[ERROR]: Expected " << PACKET_SIZE << " bytes, found " << count << endl;
         m_bad = true;
         return false;
     }

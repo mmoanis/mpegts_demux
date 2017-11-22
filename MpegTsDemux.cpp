@@ -29,7 +29,7 @@ Stream::Stream(const char *filename, PID id, PID pid)
     assert(filename != NULL);
     m_file = fopen(filename, "wb");
     if (!m_file) {
-        cerr << "STREAM " << m_id << " PID " << m_pid << " : can't open file \'" << filename << "\'" << endl;
+        cerr << "[ERROR]: STREAM=" << m_id << " PID=" << m_pid << " : can't open file \'" << filename << "\'" << endl;
     }
 }
 Stream::~Stream()
@@ -44,7 +44,7 @@ void Stream::Write(Packet::const_iterator b, Packet::const_iterator e)
     while (b != e) {
         int r = fputc(*b++, m_file);
         if (r == EOF) {
-            cerr << "STREAM " << m_id << " PID " << m_pid << " Write Failed." << endl;
+            cerr << "[ERROR]: STREAM=" << m_id << " PID=" << m_pid << " Write failed." << endl;
             fclose(m_file);
             m_file = NULL;
         }
@@ -77,6 +77,8 @@ void MpegTsDemuxer::Reset()
 /// ////////////////////////////////////////////////////////////////////////////
 bool MpegTsDemuxer::DecodePacket(const Packet& packet)
 {
+    ++m_pnum;
+
     Packet::const_iterator p = packet.begin(), e = packet.end();
     PacketHeader header;
     if (!ReadHeader(p, e, header))
@@ -86,7 +88,7 @@ bool MpegTsDemuxer::DecodePacket(const Packet& packet)
     //cout << "DecodePacket: PID=" << id << endl;
     switch (id) {
         case MPEGTS_PID_NULL: {
-            cout << "DecodePacket: Null packet." << endl;
+            cout << "[INFO]: PKT#" << m_pnum << " Null packet." << endl;
             return true;
         }
         case MPEGTS_PID_PAT: {
@@ -97,7 +99,7 @@ bool MpegTsDemuxer::DecodePacket(const Packet& packet)
         case MPEGTS_PID_CAT:
         case MPEGTS_PID_TSDT:
         case MPEGTS_PID_IPMP:
-            cout << "DecodePacket: Discard packet PID=" << id << endl;
+            cout << "[INFO]: PKT#" << m_pnum << " Discard packet PID=" << id << endl;
             return true;
         default: {
             Filters::iterator f = m_filters.find(id);
@@ -111,21 +113,18 @@ bool MpegTsDemuxer::DecodePacket(const Packet& packet)
                 } else {
                     // clock frequency packet
                 }
-            } else {
-if (id == 33) cout << "Here" << endl;
             }
             break;
         }
     }
 
-    ++m_pnum;
     return true;
 }
 /// ////////////////////////////////////////////////////////////////////////////
 bool MpegTsDemuxer::ReadHeader(Packet::const_iterator &p, Packet::const_iterator e, PacketHeader& header)
 {
     if (*p != MPEGTS_SYNC_BYTE) {
-        cerr << "DecodePacket: Sync byte not found." << endl;
+        cerr << "[ERROR]: PKT#" << m_pnum << " Sync byte not found." << endl;
         return false;
     }
     p++;
@@ -164,36 +163,36 @@ bool MpegTsDemuxer::ReadPAT(Packet::const_iterator &p, Packet::const_iterator e)
         const uint8_t id = *p++;
         if (id == MPEGTS_TABLE_NIL) {
             if (!done) {
-                cerr << "PAT packet has no associated PSI." << endl;
+                cerr << "[ERROR]: PKT#" << m_pnum << " PAT packet has no associated PSI." << endl;
                 return false;
             }
             return true;
         } else if (id != MPEGTS_TABLE_PAS) {
-            cerr << "[ERROR]: EXPECTED PAT SECTION=" << MPEGTS_TABLE_PAS << " FOUND " << id << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" Expected PAT SECTION=" << MPEGTS_TABLE_PAS << " found " << id << endl;
             return false;
         }
 
         const bool ssi = static_cast<bool> (*p&0x80); // PAT/PMT/CAT == 1
         if (!ssi) {
-            cerr << "[ERROR]: PAT Section syntax indicator not set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PAT section syntax indicator not set." << endl;
             return false;
         }
 
         const bool pb = static_cast<bool> (*p&0x40); // PAT/PMT/CAT == 0
         if (pb) {
-            cerr << "[ERROR]: PAT Private bit is set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum << " PAT private bit is set." << endl;
             return false;
         }
 
         if (((*p&0x30)>>4) != 0x03 ) {
-            cerr << "[ERROR]: PAT PSI reserved bits not set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PAT PSI reserved bits not set." << endl;
             return false;
         }
 
         const uint16_t slength = uint16_t((p[0]&0x03)<<8) | uint16_t(p[1]);
         p += 2;
         if (p + slength >= e) {
-            cerr << "[ERROR]: PAT Bad section length." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PAT bad section length." << endl;
             return false;
         }
 
@@ -206,7 +205,7 @@ bool MpegTsDemuxer::ReadPAT(Packet::const_iterator &p, Packet::const_iterator e)
         p+=2;
 
         if (((*p&0xE0)>>5) != 0x07) {
-            cerr << "[ERROR]: PAT Reserved bits not set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PAT reserved bits not set." << endl;
             return false;
         }
         uint16_t pmid = uint16_t((p[0]&0x1F)<<8) | uint16_t(p[1]);
@@ -240,37 +239,37 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
         const uint8_t id = *p++;
         if (id == MPEGTS_TABLE_NIL) {
             if (!done) {
-                cerr << "[ERROR]: PAT packet has no associated PSI." << endl;
+                cerr << "[ERROR]: PKT#" << m_pnum <<" PMT packet has no associated PSI." << endl;
                 return false;
             }
             return true;
         } else if (id != MPEGTS_TABLE_PMS) {
             // can happen! Just ignore.
-            cout << "[WARNING]: EXPECTED PMT SECTION=" << MPEGTS_TABLE_PMS << " FOUND " << id << endl;
+            cout << "[WARNING]: PKT#" << m_pnum << "Expected PMT SECTION=" << MPEGTS_TABLE_PMS << " found " << id << endl;
             return true;
         }
 
         const bool ssi = static_cast<bool> (*p&0x80); // PAT/PMT/CAT == 1
         if (!ssi) {
-            cerr << "[ERROR]: PMT Section syntax indicator not set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PMT section syntax indicator not set." << endl;
             return false;
         }
 
         const bool pb = static_cast<bool> (*p&0x40); // PAT/PMT/CAT == 0
         if (pb) {
-            cerr << "[ERROR]: PMT Private bit is set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PMT private bit is set." << endl;
             return false;
         }
 
         if (((*p&0x30)>>4) != 0x03 ) {
-            cerr << "[ERROR]: PMT PSI Reserved bits not set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PMT PSI reserved bits not set." << endl;
             return false;
         }
 
         const uint16_t slength = uint16_t((p[0]&0x03)<<10) | uint16_t(p[1]);
         p += 2;
         if (p + slength >= e) {
-            cerr << "[ERROR]: PMT Bad section length." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PMT bad section length." << endl;
             return false;
         }
 
@@ -281,12 +280,12 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
         // Get the program this PMT referring to
         Programs::const_iterator prog = m_programs.find(section.id);
         if (prog == m_programs.end()) {
-            cerr << "[ERROR]: PMT references non existing Program " << section.id << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PMT references non existing PROGRAM=" << section.id << endl;
             return false;
         }
 
         if (((*p&0xE0)>>5) != 0x07) {
-            cerr << "[ERROR]: PMT Reserved bits not set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PMT reserved bits not set." << endl;
             return false;
         }
 
@@ -297,7 +296,7 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
         //m_filters.insert(make_pair(pcrid, DEMUXER_EVENT_PCR));
 
         if (((*p&0xF0)>>4) != 0x0F) {
-            cerr << "[ERROR]: PMT Reserved bits not set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PMT reserved bits not set." << endl;
             return false;
         }
 
@@ -306,7 +305,7 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
         p += 2;
 
         if (p + pinfol >= e) {
-            cerr << "[ERROR]: PMT Bad program info length." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" PMT bad program info length." << endl;
             return false;
         }
         p += pinfol;
@@ -336,7 +335,7 @@ bool MpegTsDemuxer::ReadPES(Packet::const_iterator &p, Packet::const_iterator e,
     {
         Streams::iterator s = m_streams.find(id);
         if (s == m_streams.end()) {
-            cerr << "[ERROR]: INVALID STREAM=" << id << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" Invalid STREAM=" << id << endl;
             return false;
         }
         S = (*s).second;
@@ -349,7 +348,7 @@ bool MpegTsDemuxer::ReadPES(Packet::const_iterator &p, Packet::const_iterator e,
             const uint8_t sidx = *p++;
             const bool expected = MPEGTS_AUDIO_STREAM(sidx) || MPEGTS_VIDEO_STREAM(sidx);
             if (!expected) {
-                cerr << "[ERROR]: EXPECTED AUDIO/VIDEO PACKETS ONLY. FOUND=" << hex << uint16_t(sidx) << dec << endl;
+                cerr << "[ERROR]: PKT#" << m_pnum <<" Expected audio/video packets only. FOUND=" << hex << uint16_t(sidx) << dec << endl;
                 return false;
             }
 
@@ -361,7 +360,7 @@ bool MpegTsDemuxer::ReadPES(Packet::const_iterator &p, Packet::const_iterator e,
 
             const uint8_t pl = *p++;
             if (p + pl >= e) {
-                cerr << "[ERROR]: PES Invalid length." << m_pnum << endl;
+                cerr << "[ERROR]: PKT#" << m_pnum <<" PES Invalid length." << m_pnum << endl;
                 return false;
             }
             p += pl;
@@ -369,7 +368,7 @@ bool MpegTsDemuxer::ReadPES(Packet::const_iterator &p, Packet::const_iterator e,
             // write to stream
             S->Write(p, e);
         } else {
-            cerr << "[ERROR]: EXPECTED PES START SEQUENCE." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" Expected PES start sequence." << endl;
             return false;
         }
     } else {
@@ -387,7 +386,7 @@ bool MpegTsDemuxer::ReadSection(Packet::const_iterator &p, Packet::const_iterato
     p+= 2;
 
     if (((*p&0xC0)>>6) != 0x03) {
-        cerr << "[ERROR]: Section Reserved bits not set." << endl;
+        cerr << "[ERROR]: PKT#" << m_pnum <<" Section reserved bits not set." << endl;
         return false;
     }
     section.version = (*p&0x3E)>>1;
@@ -404,7 +403,7 @@ void MpegTsDemuxer::RegisterProgram(PID id, PID pid)
 
     Programs::iterator p = m_programs.find(id);
     if (p == m_programs.end()) {
-        cout << "Found program: " << id << " PMT=" << pid << endl;
+        cout << "[INFO]: PKT#" << m_pnum << " PROGRAM=" << id << " PMT=" << pid << endl;
 
         Program P;
         P.id = id;
@@ -416,7 +415,7 @@ void MpegTsDemuxer::RegisterProgram(PID id, PID pid)
     } else {
         if (p->second.pid != pid) {
             // FIXME: update/or error?
-            cout << "[WARNING]: PROGRAM=" << id << " PMT=" << p->second.pid << " APPEARED WITH PMT=" << pid <<  endl;
+            cout << "[WARNING]: PKT#" << m_pnum << " PROGRAM=" << id << " PMT=" << p->second.pid << " appeared with PMT=" << pid <<  endl;
         }
     }
 }
@@ -436,7 +435,7 @@ bool MpegTsDemuxer::ReadESD(Packet::const_iterator &p, Packet::const_iterator e,
 
         const uint8_t st = *p++;
         if (((*p&0xE0)>>5) != 0x07) {
-            cerr << "[ERROR]: ESD Reserved bits not set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" ESD reserved bits not set." << endl;
             return false;
         }
 
@@ -448,7 +447,7 @@ bool MpegTsDemuxer::ReadESD(Packet::const_iterator &p, Packet::const_iterator e,
         p += 2;
 
         if (((*p&0xF0)>>4) != 0x0F) {
-            cerr << "ESD Reserved bits not set." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum << "ESD reserved bits not set." << endl;
             return false;
         }
 
@@ -456,7 +455,7 @@ bool MpegTsDemuxer::ReadESD(Packet::const_iterator &p, Packet::const_iterator e,
         p += 2;
 
         if (p + esil >= e) {
-            cerr << "[ERROR]: ESD INVALID ES info length." << endl;
+            cerr << "[ERROR]: PKT#" << m_pnum <<" ESD invalid info length." << endl;
             return false;
         }
         p += esil;
@@ -479,12 +478,12 @@ bool MpegTsDemuxer::RegisterStream(PID id, const Program& prog, bool video)
         string filename = GetFileName(video, id, prog.id);
         Stream *S = new Stream(filename.c_str(), id, prog.id);
         m_streams.insert( make_pair(id, S) );
-        cout << "INFO: STREAM=" << id << " PROGRAM=" << prog.id << " TYPE=" << (video? "VIDEO" : "AUDIO") << endl;
+        cout << "[INFO]: PKT#" << m_pnum << " STREAM=" << id << " PROGRAM=" << prog.id << " TYPE=" << (video? "VIDEO" : "AUDIO") << endl;
         // expect packet for stream
         m_filters.insert( make_pair(id, DEMUXER_EVENT_PES) );
     }  else {
         if ((*s).second->GetPId() != prog.id) {
-            cout << "WARNING: STREAM=" << id << " PROGRAM=" << (*s).second->GetPId() << " APPEARED IN PROGRAM=" << prog.id << endl;
+            cout << "[WARNING]: PKT#" << m_pnum << " STREAM=" << id << " PROGRAM=" << (*s).second->GetPId() << " appeared in PROGRAM=" << prog.id << endl;
             return false;
         }
     }
