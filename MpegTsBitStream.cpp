@@ -6,10 +6,14 @@ using namespace std;
 
 MpegTsBitStream::MpegTsBitStream(const char * filename) : m_file(NULL), m_eof(false), m_bad(true)
 {
-    m_file = fopen(filename, "rb");
-    if (!m_file) throw logic_error("File doesn't exists.");
+    assert(filename != NULL);
 
-    m_bad = false;
+    m_file = fopen(filename, "rb");
+    if (!m_file) {
+        cerr << "MPEG-TS: can't open file \'" << filename << "\'" << endl;
+    } else {
+        m_bad = false;
+    }
 }
 
 MpegTsBitStream::~MpegTsBitStream() {
@@ -18,7 +22,8 @@ MpegTsBitStream::~MpegTsBitStream() {
 
 bool MpegTsBitStream::GetPacket(Packet& packet)
 {
-    if (!m_file) return false;
+    // Fast exit
+    if (!m_file || !good()) return false;
 
     Packet::iterator p = packet.begin();
 
@@ -32,7 +37,7 @@ bool MpegTsBitStream::GetPacket(Packet& packet)
     }
 
     uint8_t c = static_cast<uint8_t> (C);
-    if (c != 0x47) {
+    if (c != MPEGTS_SYNC_BYTE) {
         cerr << "GetPacket: Sync byte not found." << endl;
         m_bad = true;
         return false;
@@ -45,7 +50,6 @@ bool MpegTsBitStream::GetPacket(Packet& packet)
             m_eof = true;
             break;
         }
-        //++count;
         c = static_cast<uint8_t> (C);
         *p++ = c;
         ++count;
