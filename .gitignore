@@ -43,6 +43,9 @@ bin/*
 
 # FFmpeg binaries
 ffmpeg/*
+old/
+video
+*.mpg
 
 # Hex Dump files
 dump.txt
