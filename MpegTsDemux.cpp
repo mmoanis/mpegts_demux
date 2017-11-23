@@ -162,13 +162,20 @@ bool MpegTsDemuxer::ReadPAT(Packet::const_iterator &p, Packet::const_iterator e)
     const uint8_t pointer = *p++;
     p += pointer; // Jump to table at pointer offset
 
-    bool done = false; // Must get atleast 1 Program
+    bool done = false; // Must get at least 1 Program
 
     // Tables can be repeated.
-    // TODO: But not sure this is the case for PAT packets
     while (p < e) {
         const uint8_t id = *p++;
-        if (id == MPEGTS_TABLE_NIL) {
+        if (id == MPEGTS_STUFFING_BYTE) {
+            if (!done) {
+                cerr << "[ERROR]: PKT#" << m_pnum << " Empty PAT packet." << endl;
+                return false;
+            }
+            // we are done, happy return
+            return true;
+        }
+        else if (id == MPEGTS_TABLE_NIL) {
             if (!done) {
                 cerr << "[ERROR]: PKT#" << m_pnum << " PAT packet has no associated PSI." << endl;
                 return false;
@@ -196,6 +203,10 @@ bool MpegTsDemuxer::ReadPAT(Packet::const_iterator &p, Packet::const_iterator e)
             return false;
         }
 
+        if (p + 1 >= e) {
+            cerr << "[ERROR]: PKT#" << m_pnum << " PAT PSI not enough data." << endl;
+            return false;
+        }
         const uint16_t slength = uint16_t((p[0]&0x03)<<8) | uint16_t(p[1]);
         p += 2;
         if (p + slength >= e) {
@@ -207,7 +218,31 @@ bool MpegTsDemuxer::ReadPAT(Packet::const_iterator &p, Packet::const_iterator e)
         if (!ReadSection(p, e, section))
             return false;
 
-        // TODO: PAT can be repeated for multiple programs.
+        // Read PAT, can be repeated
+        if (!ReadPrograms(p, e))
+            return false;
+
+        // End of the section
+        //uint32_t crc = uint32_t(p[0]<<24) | uint32_t(p[1]<<16) | uint32_t(p[2]<<8) | uint32_t(p[3]);
+        //cout << "CRC: " << hex << crc << dec << endl;
+        p += 4;
+        done = true;
+    }
+
+    return done;
+}
+/// ////////////////////////////////////////////////////////////////////////////
+/// Read PAT tables
+bool MpegTsDemuxer::ReadPrograms(Packet::const_iterator &p, Packet::const_iterator e)
+{
+    bool done = false;
+    // Read PAT table till end of packet (CRC)
+    while (p + 3 < e) {
+        if (p[4] == MPEGTS_STUFFING_BYTE) {
+            // Read PAT table till end of packet (CRC+STUFFING)
+            break;
+        }
+
         uint16_t pnum = uint16_t(p[0]<<8) | uint16_t(p[1]);
         p+=2;
 
@@ -220,14 +255,12 @@ bool MpegTsDemuxer::ReadPAT(Packet::const_iterator &p, Packet::const_iterator e)
 
         RegisterProgram(pnum, pmid);
         //cout << "PNUM: " << pnum << " PMAP PID: " << pmid << endl;
-
-        // End of the section
-        //uint32_t crc = uint32_t(p[0]<<24) | uint32_t(p[1]<<16) | uint32_t(p[2]<<8) | uint32_t(p[3]);
-        //cout << "CRC: " << hex << crc << dec << endl;
-        p += 4;
-        done = true; /// TODO: FIXME: XXX:
+        done = true;
     }
 
+    if (!done) {
+        cerr << "[ERROR]: PKT#" << m_pnum << " PAT can't find programs." << endl;
+    }
     return done;
 }
 /// ////////////////////////////////////////////////////////////////////////////
@@ -400,7 +433,11 @@ bool MpegTsDemuxer::CheckPES(Packet::const_iterator &p, Packet::const_iterator e
 /// ////////////////////////////////////////////////////////////////////////////
 bool MpegTsDemuxer::ReadSection(Packet::const_iterator &p, Packet::const_iterator e, PacketSection& section)
 {
-    // TODO: Check we have enough buffer ahead
+    if (p + 4 >= e) {
+        cerr << "[ERROR]: PKT#" << m_pnum << " not enough data in PSI section." << endl;
+        return false;
+    }
+
     section.id = uint16_t(p[0]<<8) | uint16_t(p[1]);
     p+= 2;
 

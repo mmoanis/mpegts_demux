@@ -72,6 +72,8 @@ protected:
     /// Fills a section header info
     bool ReadSection(Packet::const_iterator &p, Packet::const_iterator e, PacketSection& section);
 
+    /// Read PAT tables
+    bool ReadPrograms(Packet::const_iterator &p, Packet::const_iterator e);
     /// Read Elementary stream data
     bool ReadESD(Packet::const_iterator &p, Packet::const_iterator e, const Program& prog);
 
