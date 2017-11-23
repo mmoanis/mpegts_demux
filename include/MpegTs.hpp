@@ -64,12 +64,28 @@ using PID = uint16_t;
 #define MPEGTS_TABLE_NIL 0xFF /// End of section.
 
 /// Stream IDS
-#define MPEGTS_AUDIO_STREAM(id)  ((id) >= 0xC0 && (id) <= 0xDF)
+// TODO: 0xBD is a private stream can hold audio data. Not sure should I include it or not some samples use it.
+#define MPEGTS_AUDIO_STREAM(id)  ((id)==0xBD || ((id) >= 0xC0 && (id) <= 0xDF))
 #define MPEGTS_VIDEO_STREAM(id)  ((id) >= 0xE0 && (id) <= 0xEF)
 
 /// Stream Types (Not Complete)
-#define MPEGTS_AUDIO_STREAM_TYPE(st) ((st)==0x03 || (st)==0x04 || (st)==0x0F || (st)==0x81)
-#define MPEGTS_VIDEO_STREAM_TYPE(st) ((st)==0x01 || (st)==0x02 || (st)==0x10 || (st)==0x1B)
+#define MPEGTS_STREAM_VIDEO_MPEG1 0x01
+#define MPEGTS_STREAM_VIDEO_MPEG2 0x02
+#define MPEGTS_STREAM_VIDEO_MPEG4 0x10
+#define MPEGTS_STREAM_VIDEO_H264  0x1B
+#define MPEGTS_STREAM_AUDIO_MPEG1 0x03
+#define MPEGTS_STREAM_AUDIO_MPEG2 0x04
+#define MPEGTS_STREAM_AUDIO_ACC 0x0F
+#define MPEGTS_STREAM_AUDIO_AC3 0x81
+
+#define MPEGTS_AUDIO_STREAM_TYPE(st) ((st)==MPEGTS_STREAM_AUDIO_MPEG1 || \
+                                      (st)==MPEGTS_STREAM_AUDIO_MPEG2 || \
+                                      (st)==MPEGTS_STREAM_AUDIO_ACC   || \
+                                      (st)==MPEGTS_STREAM_AUDIO_AC3)
+#define MPEGTS_VIDEO_STREAM_TYPE(st) ((st)==MPEGTS_STREAM_VIDEO_MPEG1 || \
+                                      (st)==MPEGTS_STREAM_VIDEO_MPEG2 || \
+                                      (st)==MPEGTS_STREAM_VIDEO_MPEG4 || \
+                                      (st)==MPEGTS_STREAM_VIDEO_H264)
 
 /// ///////////////////////////////////////////////////////////////////////////
 /// Program
