@@ -56,6 +56,9 @@ void Stream::Write(Packet::const_iterator b, Packet::const_iterator e)
 MpegTsDemuxer::MpegTsDemuxer()
     : m_pnum(0)
 {
+    // List know PIDs in the filters
+    m_filters.insert(make_pair(MPEGTS_PID_NULL, DEMUXER_EVENT_NIL));
+    m_filters.insert(make_pair(MPEGTS_PID_PAT, DEMUXER_EVENT_PAT));
 }
 
 MpegTsDemuxer::~MpegTsDemuxer()
@@ -86,44 +89,39 @@ bool MpegTsDemuxer::DecodePacket(const Packet& packet)
 
     PID &id = header.id;
     //cout << "DecodePacket: PID=" << id << endl;
-    switch (id) {
-        case MPEGTS_PID_NULL: {
+
+    // Lookup this ID in our filters
+    Filters::iterator f = m_filters.find(id);
+    if (f != m_filters.end()) {
+        DemuxerEvents E = (*f).second;
+        switch (E) {
+        case DEMUXER_EVENT_NIL:
+            // NULL PACKET
             //cout << "[INFO]: PKT#" << m_pnum << " Null packet." << endl;
             return true;
-        }
-        case MPEGTS_PID_PAT: {
+        case DEMUXER_EVENT_PAT:
             if (!ReadPAT(p, e))
                 return false;
             break;
-        }
-        case MPEGTS_PID_CAT:
-        case MPEGTS_PID_TSDT:
-        case MPEGTS_PID_IPMP:
-            cout << "[INFO]: PKT#" << m_pnum << " Discard packet PID=" << id << endl;
-            return true;
-        default: {
-            Filters::iterator f = m_filters.find(id);
-            if (f != m_filters.end()) {
-                if ((*f).second == DEMUXER_EVENT_PMT) {
-                    if (!ReadPMT(p, e))
-                    return false;
-                } else if ((*f).second == DEMUXER_EVENT_PES) {
-                    if (!ReadPES(p, e, header, id))
-                        return false;
-                } else {
-                    // clock frequency packet
-                }
-            } else {
-                // Check if orphaned PES with no program.
-                if (!CheckPES(p, e, header))
-                    break;
-                if (!ReadPES(p, e, header, id))
-                    return false;
-            }
+        case DEMUXER_EVENT_PMT:
+            if (!ReadPMT(p, e))
+                return false;
+            break;
+        case DEMUXER_EVENT_PES:
+            if (!ReadPES(p, e, header, id))
+                return false;
+            break;
+        default:
+            cout << "[WARNING]: PID=" << id << " filtered but not handled." << endl;
             break;
         }
+    } else {
+        // Check if orphaned PES with no program.
+        if (CheckPES(p, e, header)) {
+            if (!ReadPES(p, e, header, id))
+                return false;
+        }
     }
-
     return true;
 }
 /// ////////////////////////////////////////////////////////////////////////////
@@ -500,7 +498,8 @@ bool MpegTsDemuxer::RegisterStream(PID id, const Program& prog, bool video)
         // expect packet for stream
         m_filters.insert( make_pair(id, DEMUXER_EVENT_PES) );
     }  else {
-        if ((*s).second->GetPId() != prog.id) {
+        if ((*s).second->GetPId() != prog.id && prog.id != MPEGTS_PID_NULL) {
+            // Packet is orphaned
             cout << "[WARNING]: PKT#" << m_pnum << " STREAM=" << id << " PROGRAM=" << (*s).second->GetPId() << " appeared in PROGRAM=" << prog.id << endl;
             if ((*s).second->GetPId() == MPEGTS_PID_NULL) {
                 (*s).second->SetPId(prog.id);

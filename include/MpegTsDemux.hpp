@@ -36,7 +36,9 @@ private:
 enum DemuxerEvents {
     DEMUXER_EVENT_PCR, /// FIXME: what is PCR
     DEMUXER_EVENT_PMT,
-    DEMUXER_EVENT_PES
+    DEMUXER_EVENT_PES,
+    DEMUXER_EVENT_PAT,
+    DEMUXER_EVENT_NIL
 };
 /// /////////////////////////////////////////////////////////////////////////////
 /// Demuxer Interface.
