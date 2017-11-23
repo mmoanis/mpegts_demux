@@ -12,8 +12,8 @@ static string GetFileName(bool video, PID id, PID prog)
     stringstream ss;
     ss << (video? "video" : "audio") << "_id_";
     ss << id;
-    ss << "_prog_";
-    ss << prog;
+    //ss << "_prog_";
+    //ss << prog;
     return ss.str();
 }
 
@@ -88,7 +88,7 @@ bool MpegTsDemuxer::DecodePacket(const Packet& packet)
     //cout << "DecodePacket: PID=" << id << endl;
     switch (id) {
         case MPEGTS_PID_NULL: {
-            cout << "[INFO]: PKT#" << m_pnum << " Null packet." << endl;
+            //cout << "[INFO]: PKT#" << m_pnum << " Null packet." << endl;
             return true;
         }
         case MPEGTS_PID_PAT: {
@@ -113,6 +113,12 @@ bool MpegTsDemuxer::DecodePacket(const Packet& packet)
                 } else {
                     // clock frequency packet
                 }
+            } else {
+                // Check if orphaned PES with no program.
+                if (!CheckPES(p, e, header))
+                    break;
+                if (!ReadPES(p, e, header, id))
+                    return false;
             }
             break;
         }
@@ -331,26 +337,25 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
 /// Reads PES packet
 bool MpegTsDemuxer::ReadPES(Packet::const_iterator &p, Packet::const_iterator e, PacketHeader& header, PID id)
 {
-    Stream* S = NULL;
-    {
-        Streams::iterator s = m_streams.find(id);
-        if (s == m_streams.end()) {
-            cerr << "[ERROR]: PKT#" << m_pnum <<" Invalid STREAM=" << id << endl;
-            return false;
-        }
-        S = (*s).second;
-    }
-
     if (header.pusi) {
         /// PES PSI
         if (p[0] == 0x0 && p[1] == 0x0 && p[2] == 0x01) {
             p += 3;
             const uint8_t sidx = *p++;
-            const bool expected = MPEGTS_AUDIO_STREAM(sidx) || MPEGTS_VIDEO_STREAM(sidx);
+            const bool video = MPEGTS_VIDEO_STREAM(sidx);
+            const bool expected = MPEGTS_AUDIO_STREAM(sidx) || video;
             if (!expected) {
                 cerr << "[ERROR]: PKT#" << m_pnum <<" Expected audio/video packets only. FOUND=" << hex << uint16_t(sidx) << dec << endl;
                 return false;
             }
+
+            Streams::iterator s = m_streams.find(id);
+            if (s == m_streams.end()) {
+                if (!RegisterStream(id, Program(), video))
+                    return false;
+                s = m_streams.find(id);
+            }
+            Stream* S = (*s).second;
 
             // escape packet length
             p += 2;
@@ -373,10 +378,23 @@ bool MpegTsDemuxer::ReadPES(Packet::const_iterator &p, Packet::const_iterator e,
         }
     } else {
         /// TODO: continuity
-
+        Streams::iterator s = m_streams.find(id);
+        if (s == m_streams.end()) {
+            cerr << "[ERROR]: PKT#" << m_pnum <<" Invalid STREAM=" << id << endl;
+            return false;
+        }
+        Stream* S = (*s).second;
         S->Write(p, e);
     }
     return true;
+}
+////////////////////////////////////////////////////////////////////////////
+bool MpegTsDemuxer::CheckPES(Packet::const_iterator &p, Packet::const_iterator e, PacketHeader& header)
+{
+    if (header.pusi) {
+        return (p[0] == 0x0 && p[1] == 0x0 && p[2] == 0x01);
+    }
+    return false;
 }
 /// ////////////////////////////////////////////////////////////////////////////
 bool MpegTsDemuxer::ReadSection(Packet::const_iterator &p, Packet::const_iterator e, PacketSection& section)
@@ -484,7 +502,11 @@ bool MpegTsDemuxer::RegisterStream(PID id, const Program& prog, bool video)
     }  else {
         if ((*s).second->GetPId() != prog.id) {
             cout << "[WARNING]: PKT#" << m_pnum << " STREAM=" << id << " PROGRAM=" << (*s).second->GetPId() << " appeared in PROGRAM=" << prog.id << endl;
-            return false;
+            if ((*s).second->GetPId() == MPEGTS_PID_NULL) {
+                (*s).second->SetPId(prog.id);
+                //return true;
+            }
+            //return t;
         }
     }
     return true;

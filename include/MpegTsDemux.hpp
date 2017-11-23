@@ -22,6 +22,7 @@ public:
 
     PID GetId() const { return m_id; }
     PID GetPId() const { return m_pid; }
+    void SetPId(PID id) { m_pid = id; }
 
     /// Write data from packet to sink
     void Write(Packet::const_iterator b, Packet::const_iterator e);
@@ -64,6 +65,7 @@ protected:
     bool ReadPMT(Packet::const_iterator &p, Packet::const_iterator e);
     /// Reads PES packet
     bool ReadPES(Packet::const_iterator &p, Packet::const_iterator e, PacketHeader& header, PID id);
+    bool CheckPES(Packet::const_iterator &p, Packet::const_iterator e, PacketHeader& header);
 
     /// Fills a section header info
     bool ReadSection(Packet::const_iterator &p, Packet::const_iterator e, PacketSection& section);
