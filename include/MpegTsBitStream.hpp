@@ -5,7 +5,6 @@
 #define INCLUDED_MPEGTSBITSTREAM_HPP
 
 #include <MpegTs.hpp>
-#include <ByteStream_iterator.hpp>
 #include <cstdio>
 
 /// ////////////////////////////////////////////////////////////////////////////
