@@ -53,12 +53,15 @@ void Stream::Write(Packet::const_iterator b, Packet::const_iterator e)
 /// ////////////////////////////////////////////////////////////////////////////
 
 /// ////////////////////////////////////////////////////////////////////////////
-MpegTsDemuxer::MpegTsDemuxer()
+MpegTsDemuxer::MpegTsDemuxer(bool info)
     : m_pnum(0)
 {
-    // List know PIDs in the filters
-    m_filters.insert(make_pair(MPEGTS_PID_NULL, DEMUXER_EVENT_NIL));
-    m_filters.insert(make_pair(MPEGTS_PID_PAT, DEMUXER_EVENT_PAT));
+    // Ignore all packets except PES by default, except when requested.
+    if (info) {
+        // List know PIDs in the filters.
+        m_filters.insert(make_pair(MPEGTS_PID_NULL, DEMUXER_EVENT_NIL));
+        m_filters.insert(make_pair(MPEGTS_PID_PAT, DEMUXER_EVENT_PAT));
+    }
 }
 
 MpegTsDemuxer::~MpegTsDemuxer()
@@ -444,7 +447,7 @@ bool MpegTsDemuxer::ReadESD(Packet::const_iterator &p, Packet::const_iterator e,
         if (p[4] == MPEGTS_STUFFING_BYTE) {
             // Oh, we hit it. Okay happy return.
             if (!found) {
-
+                // TODO: Should we signal error?
             }
             return true;
         }

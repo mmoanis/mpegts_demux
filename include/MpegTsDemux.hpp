@@ -50,7 +50,7 @@ public:
     using Streams = std::map<PID, Stream*>;
     using Filters = std::map<PID, DemuxerEvents>;
 
-    MpegTsDemuxer();
+    MpegTsDemuxer(bool info);
     ~MpegTsDemuxer();
 
     bool DecodePacket(const Packet& packet);
