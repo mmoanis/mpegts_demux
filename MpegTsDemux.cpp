@@ -54,10 +54,10 @@ void Stream::Write(Packet::const_iterator b, Packet::const_iterator e)
 
 /// ////////////////////////////////////////////////////////////////////////////
 MpegTsDemuxer::MpegTsDemuxer(bool info)
-    : m_pnum(0)
+    : m_pnum(0), m_info(info)
 {
     // Ignore all packets except PES by default, except when requested.
-    if (info) {
+    if (m_info) {
         // List know PIDs in the filters.
         m_filters.insert(make_pair(MPEGTS_PID_NULL, DEMUXER_EVENT_NIL));
         m_filters.insert(make_pair(MPEGTS_PID_PAT, DEMUXER_EVENT_PAT));
@@ -554,7 +554,10 @@ bool MpegTsDemuxer::RegisterStream(PID id, const Program& prog, bool video)
         string filename = GetFileName(video, id, prog.id);
         Stream *S = new Stream(filename.c_str(), id, prog.id);
         m_streams.insert( make_pair(id, S) );
-        cout << "[INFO]: PKT#" << m_pnum << " STREAM=" << id << " PROGRAM=" << prog.id << " TYPE=" << (video? "VIDEO" : "AUDIO") << endl;
+        if (m_info)
+            cout << "[INFO]: PKT#" << m_pnum << " STREAM=" << id << " PROGRAM=" << prog.id << " TYPE=" << (video? "VIDEO" : "AUDIO") << endl;
+        else
+            cout << "[INFO]: PKT#" << m_pnum << " STREAM=" << id << " TYPE=" << (video? "VIDEO" : "AUDIO") << endl;
         // expect packet for stream
         m_filters.insert( make_pair(id, DEMUXER_EVENT_PES) );
     }  else {

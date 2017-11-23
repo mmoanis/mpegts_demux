@@ -87,6 +87,7 @@ private:
     Filters m_filters;
 
     uint64_t m_pnum; /// Packet number
+    bool m_info; /// Read PAT/PMT info
 };
 
 
