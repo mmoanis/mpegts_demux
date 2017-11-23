@@ -504,7 +504,8 @@ bool MpegTsDemuxer::ReadESD(Packet::const_iterator &p, Packet::const_iterator e,
         if (p[4] == MPEGTS_STUFFING_BYTE) {
             // Oh, we hit it. Okay happy return.
             if (!found) {
-                // TODO: Should we signal error?
+                cerr << "[ERROR]: PKT#" << m_pnum << " Empty ESD section." << endl;
+                return false;
             }
             return true;
         }
@@ -540,8 +541,7 @@ bool MpegTsDemuxer::ReadESD(Packet::const_iterator &p, Packet::const_iterator e,
         if (needed) {
             if (!RegisterStream(id, prog, video))
                 return false;
-            else
-                found = true;// we read a stream
+            found = true; // we found a stream
         }
     }
     return true;
