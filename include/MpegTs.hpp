@@ -16,7 +16,6 @@
 #ifndef INCLUDED_MPEGTS_HPP
 #define INCLUDED_MPEGTS_HPP
 #include <cstdint>
-#include <set>
 
 /// Default Packet Size, the standard packet size is only supported for now.
 /// Other packet sizes can exists, with more bytes up to 204. This can be easily
@@ -83,7 +82,7 @@ using PID = uint16_t;
 struct Program {
     PID id; /// Program ID
     PID pid; /// Id of the PMT table for this program
-    std::set<PID> pids; /// Packets associated with the program
+    //std::set<PID> pids; /// Packets associated with the program [UNUSED]
 
     bool operator==(const Program& p) { return id == p.id; }
     bool operator!=(const Program& p) { return id != p.id; }

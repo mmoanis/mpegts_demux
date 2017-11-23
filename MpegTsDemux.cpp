@@ -271,11 +271,17 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
     const uint8_t pointer = *p++;
     p += pointer; // Jump to table at pointer offset
 
-    bool done = false; // Must get atleast 1 Program
+    bool done = false;
 
     // Tables can be repeated.
-    // TODO: But not sure this is the case for PAT packets
     while (p < e) {
+        if (p[0] == MPEGTS_STUFFING_BYTE) {
+            if (!done) {
+                cerr << "[ERROR]: PKT#" << m_pnum << " No data in PMT table." << endl;
+                return false;
+            }
+            return true;
+        }
         const uint8_t id = *p++;
         if (id == MPEGTS_TABLE_NIL) {
             if (!done) {
@@ -306,6 +312,10 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
             return false;
         }
 
+        if (p + 1 >= e) {
+            cerr << "[ERROR]: PKT#" << m_pnum << " Not enough data in PMT table." << endl;
+            return false;
+        }
         const uint16_t slength = uint16_t((p[0]&0x03)<<10) | uint16_t(p[1]);
         p += 2;
         if (p + slength >= e) {
@@ -329,10 +339,14 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
             return false;
         }
 
+        if (p + 1 >= e) {
+            cerr << "[ERROR]: PKT#" << m_pnum << " Not enough data in PMT table." << endl;
+            return false;
+        }
         //PID pcrid = uint16_t((p[0]&0x1F)<<8) | uint16_t(p[1]); // clock frequency
         p += 2;
 
-        // expect clock frequency packet
+        // expect PES packet with clock frequency
         //m_filters.insert(make_pair(pcrid, DEMUXER_EVENT_PCR));
 
         if (((*p&0xF0)>>4) != 0x0F) {
@@ -341,6 +355,10 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
         }
 
         // program descriptors
+        if (p + 1 >= e) {
+            cerr << "[ERROR]: PKT#" << m_pnum << " Not enough data in PMT table." << endl;
+            return false;
+        }
         const uint16_t pinfol = uint16_t((p[0]&0x03)<<8) | uint16_t(p[1]);
         p += 2;
 
@@ -358,11 +376,7 @@ bool MpegTsDemuxer::ReadPMT(Packet::const_iterator &p, Packet::const_iterator e)
         //uint32_t crc = uint32_t(p[0]<<24) | uint32_t(p[1]<<16) | uint32_t(p[2]<<8) | uint32_t(p[3]);
         p += 4;
         //cout << "CRC: " << hex << crc << dec << endl;
-        done = true; /// TODO: FIXME: XXX:
-
-        //cout << "PAT: " << int(tableID) << ' ' << slength << endl;
-        //return true;
-
+        done = true;
     }
 
     return done;
@@ -470,8 +484,12 @@ void MpegTsDemuxer::RegisterProgram(PID id, PID pid)
         m_filters.insert( make_pair(pid, DEMUXER_EVENT_PMT) );
     } else {
         if (p->second.pid != pid) {
-            // FIXME: update/or error?
+            // Support updating program information
             cout << "[WARNING]: PKT#" << m_pnum << " PROGRAM=" << id << " PMT=" << p->second.pid << " appeared with PMT=" << pid <<  endl;
+            p->second.pid = pid;
+
+            // expect packet for PMT
+            m_filters.insert( make_pair(pid, DEMUXER_EVENT_PMT) );
         }
     }
 }
@@ -539,13 +557,9 @@ bool MpegTsDemuxer::RegisterStream(PID id, const Program& prog, bool video)
         m_filters.insert( make_pair(id, DEMUXER_EVENT_PES) );
     }  else {
         if ((*s).second->GetPId() != prog.id && prog.id != MPEGTS_PID_NULL) {
-            // Packet is orphaned
+            // Support updating stream information.
             cout << "[WARNING]: PKT#" << m_pnum << " STREAM=" << id << " PROGRAM=" << (*s).second->GetPId() << " appeared in PROGRAM=" << prog.id << endl;
-            if ((*s).second->GetPId() == MPEGTS_PID_NULL) {
-                (*s).second->SetPId(prog.id);
-                //return true;
-            }
-            //return t;
+            (*s).second->SetPId(prog.id);
         }
     }
     return true;
