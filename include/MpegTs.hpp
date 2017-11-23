@@ -64,15 +64,12 @@ using PID = uint16_t;
 #define MPEGTS_TABLE_NIL 0xFF /// End of section.
 
 /// Stream IDS
-#define MPEGTS_AUDIO_STREAM(id)  ((id)==0xBD || ((id) >= 0xC0 && (id) <= 0xDF))
+#define MPEGTS_AUDIO_STREAM(id)  ((id) >= 0xC0 && (id) <= 0xDF)
 #define MPEGTS_VIDEO_STREAM(id)  ((id) >= 0xE0 && (id) <= 0xEF)
 
-/// Stream Types (Not Complete-borrowed from Ffmpeg)
-#define MPEGTS_AUDIO_STREAM_TYPE(st) ((st)==0x03 || (st)==0x04 || (st)==0x0F || (st)==0x80 || \
-                                      (st)==0x81 || (st)==0x82 || (st)==0x83 || (st)==0x84 || \
-                                      (st)==0x8A)
-#define MPEGTS_VIDEO_STREAM_TYPE(st) ((st)==0x01 || (st)==0x02 || (st)==0x10 || (st)==0x1b || \
-                                      (st)==0xD1 || (st)==0xEA)
+/// Stream Types (Not Complete)
+#define MPEGTS_AUDIO_STREAM_TYPE(st) ((st)==0x03 || (st)==0x04 || (st)==0x0F || (st)==0x81)
+#define MPEGTS_VIDEO_STREAM_TYPE(st) ((st)==0x01 || (st)==0x02 || (st)==0x10 || (st)==0x1B)
 
 /// ///////////////////////////////////////////////////////////////////////////
 /// Program

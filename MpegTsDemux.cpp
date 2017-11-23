@@ -408,8 +408,11 @@ bool MpegTsDemuxer::ReadPES(Packet::const_iterator &p, Packet::const_iterator e,
             // escape packet length
             p += 2;
 
-            /// Greedy, just escape more data
+            // The rest of the header is of variable length.
+            // but we know that there are at least 3 bytes. The third is the length of the optional fields followed by a byte that stores the
             p += 2;
+
+
 
             const uint8_t pl = *p++;
             if (p + pl >= e) {
@@ -425,7 +428,6 @@ bool MpegTsDemuxer::ReadPES(Packet::const_iterator &p, Packet::const_iterator e,
             return false;
         }
     } else {
-        /// TODO: continuity
         Streams::iterator s = m_streams.find(id);
         if (s == m_streams.end()) {
             cerr << "[ERROR]: PKT#" << m_pnum <<" Invalid STREAM=" << id << endl;
