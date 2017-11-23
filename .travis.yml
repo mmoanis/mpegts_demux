@@ -1,3 +1,8 @@
+sudo: true
+before_install:
+  - sudo apt-get install ffmpeg
+  - wget test.unified-streaming.com/elephants.ts
+
 language: cpp
 
 compiler:
@@ -5,3 +10,6 @@ compiler:
 
 script:
   - make
+  - ./mpegts_demux elephants.ts
+  - ffprobe video_id_33
+  - ffprobe audio_id_34
