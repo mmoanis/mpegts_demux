@@ -54,9 +54,6 @@ public:
     ~MpegTsDemuxer();
 
     bool DecodePacket(const Packet& packet);
-
-    void Reset();
-
 protected:
     /// Fills a header with data
     bool ReadHeader(Packet::const_iterator &p, Packet::const_iterator e, PacketHeader& header);

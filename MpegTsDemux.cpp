@@ -66,19 +66,10 @@ MpegTsDemuxer::MpegTsDemuxer(bool info)
 
 MpegTsDemuxer::~MpegTsDemuxer()
 {
-    Reset();
-}
-/// ////////////////////////////////////////////////////////////////////////////
-void MpegTsDemuxer::Reset()
-{
-    m_programs.clear();
     for (Streams::iterator i = m_streams.begin(), e = m_streams.end(); i != e; ++i) {
         // clean up
         delete (*i).second;
     }
-    m_streams.clear();
-    m_filters.clear();
-    m_pnum = 0;
 }
 /// ////////////////////////////////////////////////////////////////////////////
 bool MpegTsDemuxer::DecodePacket(const Packet& packet)
