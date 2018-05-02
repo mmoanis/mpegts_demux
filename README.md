@@ -1,4 +1,4 @@
-[![Travis Build Status](https://travis-ci.org/mohamed-moanis/mpegts_demux.svg?branch=master)](https://travis-ci.org/mohamed-moanis/mpegts_demux)
+[![Travis Build Status](https://travis-ci.org/mmoanis/mpegts_demux.svg?branch=master)](https://travis-ci.org/mmoanis/mpegts_demux)
 
 # About
 "mpegts_demux" is a tool that reads a [TS](https://en.wikipedia.org/wiki/MPEG_transport_stream) file and dump the video/audio streams into disk.
